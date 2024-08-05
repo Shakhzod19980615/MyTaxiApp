@@ -2,7 +2,6 @@ package com.example.mytaxiapp
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.widget.Toast
@@ -12,31 +11,20 @@ import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.*
+import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.rememberBottomSheetScaffoldState
+import androidx.compose.material3.rememberStandardBottomSheetState
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,10 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.app.ActivityCompat
-import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationCallback
-import com.google.android.gms.location.LocationRequest
-import com.google.android.gms.location.LocationResult
+import com.google.android.gms.location.*
 import com.mapbox.android.core.permissions.PermissionsListener
 import com.mapbox.android.core.permissions.PermissionsManager
 import com.mapbox.mapboxsdk.Mapbox
@@ -100,55 +85,88 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
         permissionsManager.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 
+    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun MapScreen() {
         val context = LocalContext.current
+        val bottomSheetScaffoldState = rememberBottomSheetScaffoldState(
+            bottomSheetState = rememberStandardBottomSheetState(initialValue = SheetValue.PartiallyExpanded)
+        )
 
-        Box(modifier = Modifier.fillMaxSize()) {
-            val mapView = remember { MapView(context) }
+        BottomSheetScaffold(
+            scaffoldState = bottomSheetScaffoldState,
+            sheetContent = {
+                BottomSheetContent()
+            },
+            sheetPeekHeight = 100.dp, // Adjust this height based on your requirement
+            content = {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    val mapView = remember { MapView(context) }
 
-            AndroidView(
-                factory = {
-                    mapView.apply {
-                        getMapAsync { mapboxMap ->
-                            this@MainActivity.mapboxMap = mapboxMap
-                            mapboxMap.setStyle(Style.MAPBOX_STREETS) { style ->
-                                enableLocationComponent(style)
-                                startLocationUpdates()
+                    AndroidView(
+                        factory = {
+                            mapView.apply {
+                                getMapAsync { mapboxMap ->
+                                    this@MainActivity.mapboxMap = mapboxMap
+                                    mapboxMap.setStyle(Style.MAPBOX_STREETS) { style ->
+                                        enableLocationComponent(style)
+                                        startLocationUpdates()
+                                    }
+                                }
                             }
+                        },
+                        modifier = Modifier.fillMaxSize()
+                    )
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        ClickableImage(R.drawable.ic_menu, isTransparent = false, "Menu") { /* handle menu click */ }
+                        SwitcherButton()
+                        SpeedDisplay()
+                    }
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .padding(end = 16.dp)
+                    ) {
+                        ClickableImage(R.drawable.ic_zoom_in, isTransparent = true, "Zoom in") { zoomIn() }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        ClickableImage(R.drawable.ic_zoom_out, isTransparent = true, "Zoom out") { zoomOut() }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        ClickableImage(R.drawable.ic_reset, isTransparent = true, "Reset") { reset() }
+                    }
+
+                    DisposableEffect(mapView) {
+                        onDispose {
+                            mapView.onStop()
+                            mapView.onDestroy()
                         }
                     }
-                },
-                modifier = Modifier.fillMaxSize()
-            )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                ClickableImage(R.drawable.ic_menu, isTransparent = false,"Menu",) { /* handle menu click */ }
-                SwitcherButton()
-                SpeedDisplay()
-            }
-            Column(
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = 16.dp)
-            ) {
-                ClickableImage(R.drawable.ic_zoom_in,isTransparent = true,"Zoom in") { zoomIn() }
-                Spacer(modifier = Modifier.height(8.dp))
-                ClickableImage(R.drawable.ic_zoom_out,isTransparent = true,"Zoom out") { zoomOut() }
-                Spacer(modifier = Modifier.height(8.dp))
-                ClickableImage(R.drawable.ic_reset,isTransparent = true,"Reset") { reset() }
-            }
-
-            DisposableEffect(mapView) {
-                onDispose {
-                    mapView.onStop()
-                    mapView.onDestroy()
                 }
+            }
+        )
+    }
+
+    @Composable
+    fun BottomSheetContent() {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(300.dp) // Adjust the height as needed
+                .background(Color.LightGray)
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text("Bottom Sheet Content", fontSize = 20.sp)
+            Spacer(modifier = Modifier.height(20.dp))
+            Button(onClick = { /* Handle click */ }) {
+                Text("Button in Bottom Sheet")
             }
         }
     }
@@ -234,6 +252,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
             )
         }
     }
+
     @Composable
     fun MenuButton(onClick: () -> Unit) {
         Button(
@@ -249,6 +268,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
             )
         }
     }
+
     @Composable
     fun SpeedDisplay() {
         Box(
@@ -269,19 +289,21 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
             )
         }
     }
+
     @Composable
     fun ClickableImage(
         imageResId: Int,
-        isTransparent:Boolean,
+        isTransparent: Boolean,
         contentDescription: String? = null,
-        onClick: () -> Unit) {
+        onClick: () -> Unit
+    ) {
         Box(
             modifier = Modifier
                 .size(56.dp)
-                .background(if(isTransparent) Color.White.copy(alpha = 0.7f)else Color.White, shape = RoundedCornerShape(10.dp))// Set the size of the image container
+                .background(if (isTransparent) Color.White.copy(alpha = 0.7f) else Color.White, shape = RoundedCornerShape(10.dp)) // Set the size of the image container
                 .clickable(onClick = onClick)
                 .clip(RoundedCornerShape(14.dp)),
-            contentAlignment = Alignment.Center// Set corner radius if needed
+            contentAlignment = Alignment.Center // Set corner radius if needed
         ) {
             Image(
                 painter = painterResource(id = imageResId),
@@ -291,6 +313,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
             )
         }
     }
+
     @Composable
     fun SwitcherButton() {
         var isActive by remember { mutableStateOf(true) }
@@ -306,7 +329,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
             verticalAlignment = Alignment.CenterVertically
         ) {
             val activeColor = Color(0xFF80ED99)
-            val inactiveColor = Color.Black
+            val inactiveColor = Color(0xFFe0465f)
 
             Box(
                 modifier = Modifier
@@ -322,18 +345,17 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
                     )
                     .clip(RoundedCornerShape(topStart = 14.dp, bottomStart = 14.dp))
                     .fillMaxWidth()
-                    .clickable { isActive = true } ,
-                // consistent padding
+                    .clickable { isActive = true },
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "Active",
                     style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Normal),
-                    color = inactiveColor,
+                    color = Color.Black,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 15.dp, bottom = 15.dp), // Ensure the text takes the full width of the box
-                    textAlign = TextAlign.Center // Center the text horizontally
+                        .padding(top = 15.dp, bottom = 15.dp),
+                    textAlign = TextAlign.Center
                 )
             }
 
@@ -341,7 +363,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
                 modifier = Modifier
                     .weight(1f)
                     .background(
-                        if (!isActive) activeColor else Color.White,
+                        if (!isActive) inactiveColor else Color.White,
                         shape = RoundedCornerShape(
                             topStart = 10.dp,
                             topEnd = 10.dp,
@@ -351,25 +373,21 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
                     )
                     .clip(RoundedCornerShape(topEnd = 14.dp, bottomEnd = 14.dp))
                     .fillMaxWidth()
-                    .clickable { isActive = false } ,
-                // consistent padding
+                    .clickable { isActive = false },
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "Busy",
-                    color = inactiveColor,
+                    color = Color.Black,
                     style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Normal),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 15.dp, bottom = 15.dp),  // Ensure the text takes the full width of the box
-                    textAlign = TextAlign.Center // Center the text horizontally
+                        .padding(top = 15.dp, bottom = 15.dp),
+                    textAlign = TextAlign.Center
                 )
             }
         }
     }
-
-
-
 
     private fun zoomIn() {
         mapboxMap?.animateCamera(CameraUpdateFactory.zoomIn())
@@ -410,15 +428,17 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
                 contentDescription = "Localized description",
                 tint = Color.Black,
             )
+        }
     }
-    }
+
     @Composable
     fun ResetButton(onClick: () -> Unit) {
-        Button(onClick = onClick,
+        Button(
+            onClick = onClick,
             modifier = Modifier.size(48.dp),
             shape = RoundedCornerShape(8.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color.White),
-            ) {
+        ) {
             Icon(
                 painter = painterResource(id = R.drawable.navigation),
                 contentDescription = "Localized description",
@@ -431,4 +451,3 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
         private const val LOCATION_PERMISSION_REQUEST_CODE = 1
     }
 }
-
