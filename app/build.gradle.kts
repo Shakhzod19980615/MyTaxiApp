@@ -78,6 +78,8 @@ dependencies {
     implementation("com.google.dagger:hilt-android:2.50")
     implementation("com.google.dagger:dagger-android-support:2.50")
     kapt("com.google.dagger:hilt-android-compiler:2.50")
+    //implementation("androidx.hilt:hilt-lifecycle-viewmodel:1.0.0-alpha02")
+    kapt ("androidx.hilt:hilt-compiler:1.0.0-alpha02")
 
     implementation ("com.facebook.shimmer:shimmer:0.5.0")
 // AndroidX and Compose dependencies
@@ -100,6 +102,12 @@ dependencies {
     implementation ("com.squareup.okhttp3:logging-interceptor:5.0.0-alpha.2")
     implementation ("com.jakewharton.retrofit:retrofit2-kotlinx-serialization-converter:0.8.0")
     implementation ("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.0")
+
+    //room
+    implementation ("androidx.room:room-runtime:2.6.1")
+    kapt ("androidx.room:room-compiler:2.6.1")
+    implementation ("androidx.room:room-ktx:2.6.1")
+    implementation ("androidx.room:room-common:2.6.1")
 
     //Glide
     implementation ("com.github.bumptech.glide:glide:4.13.0")

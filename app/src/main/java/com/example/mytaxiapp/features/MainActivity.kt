@@ -5,18 +5,14 @@ import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.widget.Toast
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
-import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.*
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -31,7 +27,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -46,7 +41,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.example.mytaxiapp.R
-import com.example.mytaxiapp.features.viewModel.FragmentHomeViewModel
+import com.example.mytaxiapp.features.home.FragmentHomeViewModel
 import com.google.android.gms.location.*
 import com.mapbox.android.core.permissions.PermissionsListener
 import com.mapbox.android.core.permissions.PermissionsManager
@@ -59,8 +54,9 @@ import com.mapbox.mapboxsdk.location.LocationComponentOptions
 import com.mapbox.mapboxsdk.maps.MapView
 import com.mapbox.mapboxsdk.maps.MapboxMap
 import com.mapbox.mapboxsdk.maps.Style
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import dagger.hilt.android.AndroidEntryPoint
+
+@AndroidEntryPoint
 
 class MainActivity : AppCompatActivity(), PermissionsListener {
     private lateinit var mapView: MapView
@@ -85,7 +81,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
             permissionsManager.requestLocationPermissions(this)
         }
         setContent {
-            MapScreen()
+            MapScreen(viewModel)
         }
     }
 
@@ -96,7 +92,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    fun MapScreen() {
+    fun MapScreen(viewModel: FragmentHomeViewModel) {
         val context = LocalContext.current
         val bottomSheetScaffoldState = rememberBottomSheetScaffoldState(
             bottomSheetState = rememberStandardBottomSheetState(initialValue = SheetValue.PartiallyExpanded)
@@ -104,6 +100,8 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
         LaunchedEffect(bottomSheetScaffoldState.bottomSheetState.currentValue) {
             viewModel.setBottomSheetState(bottomSheetScaffoldState.bottomSheetState.currentValue)
         }
+        val locationState by viewModel.state.collectAsState()
+        val mapboxMapState = remember { mutableStateOf<MapboxMap?>(null) }
 
         BottomSheetScaffold(
             scaffoldState = bottomSheetScaffoldState,
@@ -119,7 +117,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
                         factory = {
                             mapView.apply {
                                 getMapAsync { mapboxMap ->
-                                    this@MainActivity.mapboxMap = mapboxMap
+                                    mapboxMapState.value = mapboxMap
                                     mapboxMap.setStyle(Style.MAPBOX_STREETS) { style ->
                                         enableLocationComponent(style)
                                         startLocationUpdates()
@@ -129,6 +127,10 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
                         },
                         modifier = Modifier.fillMaxSize()
                     )
+                    locationState.location?.let { location ->
+                        val latLng = LatLng(location.latitude, location.longitude)
+                        mapboxMapState.value?.animateCamera(CameraUpdateFactory.newLatLng(latLng))
+                    }
 
                     Row(
                         modifier = Modifier
@@ -224,7 +226,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
     @Preview(showBackground = true)
     @Composable
     fun DefaultPreview() {
-        MapScreen()
+        MapScreen(viewModel)
     }
 
     override fun onExplanationNeeded(permissionsToExplain: MutableList<String>?) {
@@ -272,23 +274,18 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
             fastestInterval = 5000 // Fastest update interval in milliseconds
             priority = LocationRequest.PRIORITY_HIGH_ACCURACY
         }
-
-        val locationCallback = object : LocationCallback() {
-            override fun onLocationResult(locationResult: LocationResult) {
-                locationResult ?: return
-                val location = locationResult.lastLocation
-                location?.let {
-                    val latLng = LatLng(it.latitude, it.longitude)
-                    val cameraPosition = CameraPosition.Builder()
-                        .target(latLng)
-                        .zoom(15.0)
-                        .tilt(20.0)
-                        .build()
-                    mapboxMap?.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition), 1000)
-                }
+        fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, null)
+    }
+    private val locationCallback = object : LocationCallback() {
+        override fun onLocationResult(locationResult: LocationResult) {
+            super.onLocationResult(locationResult)
+            locationResult.locations.lastOrNull()?.let { location ->
+                viewModel.updateLocation(location.latitude, location.longitude)
             }
         }
-        if (ActivityCompat.checkSelfPermission(
+    }
+
+   /* if (ActivityCompat.checkSelfPermission(
                 this,
                 Manifest.permission.ACCESS_FINE_LOCATION
             ) == PackageManager.PERMISSION_GRANTED
@@ -301,9 +298,9 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
                 LOCATION_PERMISSION_REQUEST_CODE
             )
         }
-    }
+    }*/
 
-    @Composable
+  /*  @Composable
     fun MenuButton(onClick: () -> Unit) {
         Button(
             onClick = onClick,
@@ -317,7 +314,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
                 tint = Color.Black
             )
         }
-    }
+    }*/
     @Composable
     fun BottomSheetItems(
         icon: Int,
