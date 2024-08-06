@@ -109,6 +109,7 @@ dependencies {
     implementation("com.mapbox.mapboxsdk:mapbox-android-sdk:8.6.7") {
         exclude( "com.google.android.gms","play-services-location")
     }// Use the latest stable version
+    implementation ("androidx.compose.runtime:runtime:1.5.0")
 
     //lifecycle
     implementation ("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.3")

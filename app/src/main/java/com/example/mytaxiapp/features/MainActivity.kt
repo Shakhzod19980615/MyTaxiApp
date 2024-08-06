@@ -1,4 +1,4 @@
-package com.example.mytaxiapp
+package com.example.mytaxiapp.features
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -7,8 +7,10 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -18,6 +20,7 @@ import androidx.compose.material.*
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.SheetValue
@@ -28,6 +31,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -40,6 +44,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import com.example.mytaxiapp.R
+import com.example.mytaxiapp.features.viewModel.FragmentHomeViewModel
 import com.google.android.gms.location.*
 import com.mapbox.android.core.permissions.PermissionsListener
 import com.mapbox.android.core.permissions.PermissionsManager
@@ -52,13 +59,15 @@ import com.mapbox.mapboxsdk.location.LocationComponentOptions
 import com.mapbox.mapboxsdk.maps.MapView
 import com.mapbox.mapboxsdk.maps.MapboxMap
 import com.mapbox.mapboxsdk.maps.Style
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 
 class MainActivity : AppCompatActivity(), PermissionsListener {
     private lateinit var mapView: MapView
     private var mapboxMap: MapboxMap? = null
     private lateinit var permissionsManager: PermissionsManager
     private lateinit var fusedLocationClient: FusedLocationProviderClient
-
+    private val viewModel: FragmentHomeViewModel by viewModels()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Mapbox.getInstance(this, getString(R.string.mapbox_access_token)) // Initialize Mapbox
@@ -92,13 +101,16 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
         val bottomSheetScaffoldState = rememberBottomSheetScaffoldState(
             bottomSheetState = rememberStandardBottomSheetState(initialValue = SheetValue.PartiallyExpanded)
         )
+        LaunchedEffect(bottomSheetScaffoldState.bottomSheetState.currentValue) {
+            viewModel.setBottomSheetState(bottomSheetScaffoldState.bottomSheetState.currentValue)
+        }
 
         BottomSheetScaffold(
             scaffoldState = bottomSheetScaffoldState,
             sheetContent = {
                 BottomSheetContent()
             },
-            sheetPeekHeight = 100.dp, // Adjust this height based on your requirement
+            sheetPeekHeight = 150.dp, // Adjust this height based on your requirement
             content = {
                 Box(modifier = Modifier.fillMaxSize()) {
                     val mapView = remember { MapView(context) }
@@ -129,17 +141,21 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
                         SwitcherButton()
                         SpeedDisplay()
                     }
-                    Column(
-                        modifier = Modifier
-                            .align(Alignment.CenterEnd)
-                            .padding(end = 16.dp)
-                    ) {
-                        ClickableImage(R.drawable.ic_zoom_in, isTransparent = true, "Zoom in") { zoomIn() }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        ClickableImage(R.drawable.ic_zoom_out, isTransparent = true, "Zoom out") { zoomOut() }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        ClickableImage(R.drawable.ic_reset, isTransparent = true, "Reset") { reset() }
+                    val bottomSheetState by viewModel.bottomSheetState.collectAsState()
+                    if(bottomSheetState==SheetValue.PartiallyExpanded) {
+                        Column(
+                            modifier = Modifier
+                                .align(Alignment.CenterEnd)
+                                .padding(end = 16.dp)
+                        ) {
+                            ClickableImage(R.drawable.ic_zoom_in, isTransparent = true, "Zoom in") { zoomIn() }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            ClickableImage(R.drawable.ic_zoom_out, isTransparent = true, "Zoom out") { zoomOut() }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            ClickableImage(R.drawable.ic_reset, isTransparent = true, "Reset") { reset() }
+                        }
                     }
+
 
                     DisposableEffect(mapView) {
                         onDispose {
@@ -152,23 +168,57 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
         )
     }
 
+    @SuppressLint("ResourceAsColor")
     @Composable
     fun BottomSheetContent() {
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(300.dp) // Adjust the height as needed
-                .background(Color.LightGray)
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+                .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 16.dp)
+                .background(Color(ContextCompat.getColor(this@MainActivity,
+                    R.color.background_secondary
+                )),
+                    shape = RoundedCornerShape(16.dp))
+                .height(200.dp) // Adjust the height as needed
         ) {
-            Text("Bottom Sheet Content", fontSize = 20.sp)
-            Spacer(modifier = Modifier.height(20.dp))
-            Button(onClick = { /* Handle click */ }) {
-                Text("Button in Bottom Sheet")
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(194.dp) // Adjust the height as needed
+                    .background(Color(ContextCompat.getColor(this@MainActivity,
+                        R.color.background_secondary
+                    )),
+                        shape = RoundedCornerShape(16.dp))
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                BottomSheetItems(
+                    icon = R.drawable.ic_tariff,
+                    title = "Tariff",
+                    number = "6/8",
+                    onClick = {}
+                    )
+                Divider(thickness = 2.dp,
+                    color = Color(ContextCompat.getColor(this@MainActivity, R.color.lineColor)))
+                BottomSheetItems(
+                    icon = R.drawable.ic_order,
+                    title = "Orders",
+                    number = "0",
+                    onClick = {}
+                )
+                Divider(thickness = 2.dp,
+                    color = Color(ContextCompat.getColor(this@MainActivity, R.color.lineColor)))
+                BottomSheetItems(
+                    icon = R.drawable.ic_rocket,
+                    title = "Tariff",
+                    number = "",
+                    onClick = {}
+                )
             }
         }
+
     }
 
     @Preview(showBackground = true)
@@ -268,6 +318,54 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
             )
         }
     }
+    @Composable
+    fun BottomSheetItems(
+        icon: Int,
+        title: String,
+        number: String? = null,
+        onClick: () -> Unit
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .padding(start = 16.dp, end = 16.dp)
+                .clickable(onClick = onClick),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically // Center the items vertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically // Center the items vertically
+            ) {
+                Image(
+                    painter = painterResource(id = icon),
+                    contentDescription = "Icon",
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = title,
+                    style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                )
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically // Center the items vertically
+            ) {
+                if (number != null) {
+                    Text(
+                        text = number,
+                        style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.SemiBold),
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+                }
+                Image(
+                    painter = painterResource(id = R.drawable.ic_right_arrow),
+                    contentDescription = "Right Arrow",
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+    }
 
     @Composable
     fun SpeedDisplay() {
@@ -300,7 +398,10 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
         Box(
             modifier = Modifier
                 .size(56.dp)
-                .background(if (isTransparent) Color.White.copy(alpha = 0.7f) else Color.White, shape = RoundedCornerShape(10.dp)) // Set the size of the image container
+                .background(
+                    if (isTransparent) Color.White.copy(alpha = 0.7f) else Color.White,
+                    shape = RoundedCornerShape(10.dp)
+                ) // Set the size of the image container
                 .clickable(onClick = onClick)
                 .clip(RoundedCornerShape(14.dp)),
             contentAlignment = Alignment.Center // Set corner radius if needed
