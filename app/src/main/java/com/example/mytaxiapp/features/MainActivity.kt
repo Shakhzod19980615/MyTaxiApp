@@ -2,7 +2,6 @@ package com.example.mytaxiapp.features
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.content.pm.PackageManager
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.compose.setContent
@@ -14,11 +13,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.BottomSheetScaffold
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetScaffoldState
@@ -122,6 +118,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
                                     mapboxMap.setStyle(Style.MAPBOX_STREETS) { style ->
                                         enableLocationComponent(style)
                                         startLocationUpdates()
+                                        viewModel.setMapboxMap(mapboxMap)
                                     }
                                 }
                             }
@@ -169,6 +166,35 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
                 }
             }
         )
+    }
+    override fun onStart() {
+        super.onStart()
+        mapView.onStart()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        mapView.onResume()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        mapView.onPause()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        mapView.onStop()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        mapView.onDestroy()
+    }
+
+    override fun onLowMemory() {
+        super.onLowMemory()
+        mapView.onLowMemory()
     }
 
     @SuppressLint("ResourceAsColor")
@@ -280,7 +306,10 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
     private val locationCallback = object : LocationCallback() {
         override fun onLocationResult(locationResult: LocationResult) {
             super.onLocationResult(locationResult)
-            locationResult.locations.lastOrNull()?.let { location ->
+            val location = locationResult.lastLocation
+            if (location != null) {
+                val latLng = LatLng(location.latitude, location.longitude)
+                mapboxMap?.animateCamera(CameraUpdateFactory.newLatLng(latLng))
                 viewModel.updateLocation(location.latitude, location.longitude)
             }
         }
@@ -498,52 +527,6 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
 
     private fun reset() {
         mapboxMap?.animateCamera(CameraUpdateFactory.newCameraPosition(CameraPosition.DEFAULT))
-    }
-
-    @Composable
-    fun ZoomInButton(onClick: () -> Unit) {
-        Button(
-            onClick = onClick,
-            shape = RoundedCornerShape(8.dp),
-            modifier = Modifier.size(48.dp)
-        ) {
-            Image(
-                painter = painterResource(id = R.drawable.ic_zoom_in),
-                contentDescription = "Zoom Out",
-            )
-        }
-    }
-
-    @Composable
-    fun ZoomOutButton(onClick: () -> Unit) {
-        Button(
-            onClick = onClick,
-            modifier = Modifier.size(48.dp),
-            shape = RoundedCornerShape(8.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color.White),
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.ic_zoom_out),
-                contentDescription = "Localized description",
-                tint = Color.Black,
-            )
-        }
-    }
-
-    @Composable
-    fun ResetButton(onClick: () -> Unit) {
-        Button(
-            onClick = onClick,
-            modifier = Modifier.size(48.dp),
-            shape = RoundedCornerShape(8.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color.White),
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.navigation),
-                contentDescription = "Localized description",
-                tint = Color.Black,
-            )
-        }
     }
 
     companion object {

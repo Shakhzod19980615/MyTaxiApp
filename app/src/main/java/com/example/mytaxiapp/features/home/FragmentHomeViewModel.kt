@@ -15,7 +15,9 @@ import com.example.mytaxiapp.features.home.domain.use_case.UserLocationUseCase
 import com.example.mytaxiapp.features.home.presentation.LocationIntent
 import com.example.mytaxiapp.features.home.presentation.LocationState
 import com.example.mytaxiapp.features.home.presentation.LocationViewState
-import com.google.android.gms.maps.model.LatLng
+import com.mapbox.mapboxsdk.camera.CameraUpdateFactory
+import com.mapbox.mapboxsdk.geometry.LatLng
+import com.mapbox.mapboxsdk.maps.MapboxMap
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -30,6 +32,7 @@ class FragmentHomeViewModel @Inject constructor(
     private val userLocationUseCase: UserLocationUseCase,
     @ApplicationContext private val context: Context
 ): ViewModel() {
+    private var mapboxMap: MapboxMap? = null
     @OptIn(ExperimentalMaterial3Api::class)
     private val _bottomSheetState = MutableStateFlow<SheetValue>(SheetValue.PartiallyExpanded) // Initial state
     @OptIn(ExperimentalMaterial3Api::class)
@@ -45,6 +48,9 @@ class FragmentHomeViewModel @Inject constructor(
         processIntents()
         registerLocationReceiver()
         startLocationService()
+    }
+    fun setMapboxMap(mapboxMap: MapboxMap) {
+        this.mapboxMap = mapboxMap
     }
     private fun startLocationService() {
         val intent = Intent(context, LocationService::class.java)
@@ -67,6 +73,10 @@ class FragmentHomeViewModel @Inject constructor(
             if (latitude != null && longitude != null) {
                 viewModelScope.launch {
                     intentFlow.emit(LocationIntent.UpdateLocation(latitude, longitude))
+                    _viewState.value.currentLocation?.let { location ->
+                        val latLng = LatLng(location.latitude, location.longitude)
+                        mapboxMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15.0))
+                    }
                 }
             }
         }
