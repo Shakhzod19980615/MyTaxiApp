@@ -85,6 +85,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
         }
     }
 
+
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         permissionsManager.onRequestPermissionsResult(requestCode, permissions, grantResults)

@@ -59,7 +59,7 @@ class FragmentHomeViewModel @Inject constructor(
         val filter = IntentFilter("LocationUpdate")
         LocalBroadcastManager.getInstance(context).registerReceiver(locationReceiver, filter)
     }
-   
+
     private val locationReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             val latitude = intent?.getDoubleExtra("latitude", 0.0)
@@ -97,6 +97,13 @@ class FragmentHomeViewModel @Inject constructor(
 
     fun updateLocation(latitude: Double, longitude: Double) {
         val locationModel = UserLocationModel(latitude, longitude)
+        viewModelScope.launch {
+            _state.value = LocationState(
+                isLoading = false,
+                location = UserLocationModel(latitude, longitude),
+                error = null
+            )
+        }
         _viewState.value = LocationViewState(currentLocation = locationModel)
         _state.value = _state.value.copy(location = locationModel)
         saveLocationToDatabase(locationModel)
