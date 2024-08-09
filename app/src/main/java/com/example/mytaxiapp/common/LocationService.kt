@@ -28,6 +28,7 @@ class LocationService() : Service() {
     private lateinit var locationCallback: LocationCallback
     private lateinit var locationRequest: LocationRequest
     private lateinit var permission: AppPermission
+
     @Inject
     lateinit var userLocationUseCase: UserLocationUseCase
 

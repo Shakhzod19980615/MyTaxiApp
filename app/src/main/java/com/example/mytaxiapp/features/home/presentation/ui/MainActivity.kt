@@ -2,6 +2,8 @@ package com.example.mytaxiapp.features.home.presentation.ui
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.compose.setContent
@@ -64,10 +66,11 @@ class MainActivity : AppCompatActivity() {
     private var mapboxMap: MapboxMap? = null
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private val viewModel: UserLocationVM by viewModels()
+    private val LOCATION_PERMISSION_REQUEST_CODE = 1
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Mapbox.getInstance(this, getString(R.string.mapbox_access_token)) // Initialize Mapbox
-
+        requestLocationPermissions()
         // Initialize FusedLocationProviderClient
         fusedLocationClient = FusedLocationProviderClient(this)
         // Initialize MapView and request permissions if needed
@@ -78,7 +81,49 @@ class MainActivity : AppCompatActivity() {
             MapScreen()
         }
     }
+    private fun requestLocationPermissions() {
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
+                LOCATION_PERMISSION_REQUEST_CODE
+            )
+        } else {
+            // Permissions are already granted, start the service
+            startLocationService()
+        }
+    }
 
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
+            if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+                // Permissions granted, start the service
+                startLocationService()
+            } else {
+                // Permissions denied, show a message to the user
+                Toast.makeText(this, "Location permissions are required", Toast.LENGTH_SHORT).show()
+                
+            }
+        }
+    }
+
+    private fun startLocationService() {
+        val serviceIntent = Intent(this, LocationService::class.java)
+        ContextCompat.startForegroundService(this, serviceIntent)
+    }
     @SuppressLint("CoroutineCreationDuringComposition")
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
