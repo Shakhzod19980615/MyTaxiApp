@@ -62,10 +62,6 @@ class LocationService() : Service() {
                 }
             }
         }
-       val locationListener = LocationListener { location ->
-           saveLocationIntoDb(location.latitude, location.longitude)
-       }
-//        locationListener = listener
             if (ActivityCompat.checkSelfPermission(
                     this,
                     Manifest.permission.ACCESS_FINE_LOCATION
@@ -97,16 +93,7 @@ class LocationService() : Service() {
     fun stopLocationUpdates() {
         fusedLocationClient.removeLocationUpdates(locationCallback)
     }
-    private fun hasLocationPermissions(): Boolean {
-        return ActivityCompat.checkSelfPermission(
-            this,
-            android.Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED &&
-                ActivityCompat.checkSelfPermission(
-                    this,
-                    android.Manifest.permission.ACCESS_COARSE_LOCATION
-                ) == PackageManager.PERMISSION_GRANTED
-    }
+
      fun saveLocationIntoDb(latitude: Double, longitude: Double) {
          Log.d("LocationService", "Attempting to save location into DB")
         scope.launch {
