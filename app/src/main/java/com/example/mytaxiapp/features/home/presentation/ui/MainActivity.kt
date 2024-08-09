@@ -3,6 +3,7 @@ package com.example.mytaxiapp.features.home.presentation.ui
 import android.Manifest
 import android.annotation.SuppressLint
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -37,10 +38,13 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.mytaxiapp.R
+import com.example.mytaxiapp.common.LocationService
 import com.example.mytaxiapp.features.home.presentation.viewModel.UserLocationVM
 import com.google.android.gms.location.*
+import com.mapbox.android.core.permissions.PermissionsListener
 import com.mapbox.android.core.permissions.PermissionsManager
 import com.mapbox.mapboxsdk.Mapbox
+import com.mapbox.mapboxsdk.annotations.MarkerOptions
 import com.mapbox.mapboxsdk.camera.CameraPosition
 import com.mapbox.mapboxsdk.camera.CameraUpdateFactory
 import com.mapbox.mapboxsdk.geometry.LatLng
@@ -50,6 +54,7 @@ import com.mapbox.mapboxsdk.maps.MapView
 import com.mapbox.mapboxsdk.maps.MapboxMap
 import com.mapbox.mapboxsdk.maps.Style
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
@@ -57,7 +62,6 @@ import kotlinx.coroutines.launch
 class MainActivity : AppCompatActivity() {
     private lateinit var mapView: MapView
     private var mapboxMap: MapboxMap? = null
-    private lateinit var permissionsManager: PermissionsManager
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private val viewModel: UserLocationVM by viewModels()
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -70,21 +74,9 @@ class MainActivity : AppCompatActivity() {
         mapView = MapView(this)
         mapView.onCreate(savedInstanceState)
 
-        /*if (PermissionsManager.areLocationPermissionsGranted(this)) {
-            //startLocationUpdates()
-        } else {
-            permissionsManager = PermissionsManager(this)
-            permissionsManager.requestLocationPermissions(this)
-        }*/
         setContent {
             MapScreen()
         }
-    }
-
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        permissionsManager.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 
     @SuppressLint("CoroutineCreationDuringComposition")
@@ -98,8 +90,23 @@ class MainActivity : AppCompatActivity() {
         LaunchedEffect(bottomSheetScaffoldState.bottomSheetState.currentValue) {
             viewModel.setBottomSheetState(bottomSheetScaffoldState.bottomSheetState.currentValue)
         }
-        val locationState by viewModel.state.collectAsState()
+        //val locationState by viewModel.state.collectAsState()
         val mapboxMapState = remember { mutableStateOf<MapboxMap?>(null) }
+
+        val scope = rememberCoroutineScope()
+        LaunchedEffect(key1 = true) {
+            scope.launch {
+                viewModel.state.collectLatest {
+                    val icon = com.mapbox.mapboxsdk.annotations.IconFactory.getInstance(context).fromResource(R.drawable.ic_car)
+                    val latLng = it.location?.let { it1 -> LatLng(it1.latitude, it.location.longitude) }
+
+                    mapboxMapState.value?.addMarker(
+                        MarkerOptions().position(LatLng(latLng))
+                            .icon(icon))
+                    mapboxMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng!!, 18.0))
+                }
+            }
+        }
 
         BottomSheetScaffold(
             scaffoldState = bottomSheetScaffoldState,
@@ -117,8 +124,7 @@ class MainActivity : AppCompatActivity() {
                                 getMapAsync { mapboxMap ->
                                     mapboxMapState.value = mapboxMap
                                     mapboxMap.setStyle(Style.MAPBOX_STREETS) { style ->
-                                        enableLocationComponent(style)
-                                        //startLocationUpdates()
+                                       // startLocationUpdates()
                                         viewModel.setMapboxMap(mapboxMap)
                                     }
                                 }
@@ -126,19 +132,7 @@ class MainActivity : AppCompatActivity() {
                         },
                         modifier = Modifier.fillMaxSize()
                     )
-                    lifecycleScope.launch {
-                        viewModel.state.collect {
-                            it.location?.let { location ->
-                                val latLng = LatLng(location.latitude, location.longitude)
-                                mapboxMapState.value?.animateCamera(CameraUpdateFactory.newLatLng(latLng))
-                            }
-                        }
-                    }
-                    /*locationState.location?.let { location ->
-                        val latLng = LatLng(location.latitude, location.longitude)
-                        mapboxMapState.value?.animateCamera(CameraUpdateFactory.newLatLng(latLng))
-                    }
-*/
+
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -213,10 +207,15 @@ class MainActivity : AppCompatActivity() {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 16.dp)
-                .background(Color(ContextCompat.getColor(this@MainActivity,
-                    R.color.background_secondary
-                )),
-                    shape = RoundedCornerShape(16.dp))
+                .background(
+                    Color(
+                        ContextCompat.getColor(
+                            this@MainActivity,
+                            R.color.background_secondary
+                        )
+                    ),
+                    shape = RoundedCornerShape(16.dp)
+                )
                 .height(200.dp) // Adjust the height as needed
         ) {
 
@@ -224,10 +223,15 @@ class MainActivity : AppCompatActivity() {
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(194.dp) // Adjust the height as needed
-                    .background(Color(ContextCompat.getColor(this@MainActivity,
-                        R.color.background_secondary
-                    )),
-                        shape = RoundedCornerShape(16.dp))
+                    .background(
+                        Color(
+                            ContextCompat.getColor(
+                                this@MainActivity,
+                                R.color.background_secondary
+                            )
+                        ),
+                        shape = RoundedCornerShape(16.dp)
+                    )
                     .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
@@ -265,63 +269,6 @@ class MainActivity : AppCompatActivity() {
         MapScreen()
     }
 
-   /* override fun onExplanationNeeded(permissionsToExplain: MutableList<String>?) {
-        Toast.makeText(this, "Permission needed", Toast.LENGTH_SHORT).show()
-    }*/
-
-    /*override fun onPermissionResult(granted: Boolean) {
-        if (granted) {
-            LocationServices.startLocationUpdates()
-        } else {
-            Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show()
-        }
-    }*/
-
-    @SuppressLint("MissingPermission")
-    private fun enableLocationComponent(loadedMapStyle: Style) {
-        if (PermissionsManager.areLocationPermissionsGranted(this)) {
-            val locationComponentOptions = LocationComponentOptions.builder(this)
-                .foregroundDrawable(R.drawable.ic_car) // Update drawable resource
-                .build()
-            val locationComponent = mapboxMap?.locationComponent
-            locationComponent?.apply {
-                activateLocationComponent(
-                    LocationComponentActivationOptions.builder(this@MainActivity, loadedMapStyle)
-                        .locationComponentOptions(locationComponentOptions)
-                        .build()
-                )
-                isLocationComponentEnabled = true
-                cameraMode = com.mapbox.mapboxsdk.location.modes.CameraMode.TRACKING
-                renderMode = com.mapbox.mapboxsdk.location.modes.RenderMode.COMPASS
-            }
-        } else {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
-                LOCATION_PERMISSION_REQUEST_CODE
-            )
-        }
-    }
-
-   /* @SuppressLint("MissingPermission")
-    private fun startLocationUpdates() {
-        val locationRequest = LocationRequest.create().apply {
-            interval = 10000 // Update interval in milliseconds
-            fastestInterval = 5000 // Fastest update interval in milliseconds
-            priority = LocationRequest.PRIORITY_HIGH_ACCURACY
-        }
-        fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, null)
-    }*/
-    /*private val locationCallback = object : LocationCallback() {
-        override fun onLocationResult(locationResult: LocationResult) {
-            super.onLocationResult(locationResult)
-            val location = locationResult.lastLocation
-            if (location != null) {
-                val latLng = LatLng(location.latitude, location.longitude)
-                mapboxMap?.animateCamera(CameraUpdateFactory.newLatLng(latLng))
-            }
-        }
-    }*/
 
     @Composable
     fun BottomSheetItems(

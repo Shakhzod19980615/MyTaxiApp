@@ -2,11 +2,13 @@ package com.example.mytaxiapp.features.home.presentation.viewModel
 
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SheetValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.mytaxiapp.common.LocationService
+import com.example.mytaxiapp.features.home.domain.model.UserLocationModel
 import com.example.mytaxiapp.features.home.domain.use_case.UserLocationUseCase
 import com.example.mytaxiapp.features.home.presentation.intent.LocationState
 import com.mapbox.mapboxsdk.maps.MapboxMap
@@ -53,7 +55,11 @@ class UserLocationVM @Inject constructor(
 
     private fun startLocationService() {
         val intent = Intent(context, LocationService::class.java)
-        context.startService(intent)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.startForegroundService(intent)
+        } else {
+            context.startService(intent)
+        }
     }
 
     private fun stopLocationService() {
@@ -61,11 +67,7 @@ class UserLocationVM @Inject constructor(
         context.stopService(intent)
     }
 
-    /*private fun saveLocationToDatabase(location: UserLocationModel) {
-        viewModelScope.launch {
-            userLocationUseCase.insert(location)
-        }
-    }*/
+
 
     override fun onCleared() {
         super.onCleared()

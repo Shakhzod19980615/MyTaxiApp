@@ -1,9 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-
-    <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+
 
     <application
         android:name=".MyApp"
@@ -14,7 +15,10 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.MyTaxiApp"
         tools:targetApi="31">
-
+        <service
+            android:name=".common.LocationService"
+            android:enabled="true"
+            android:exported="false"/>
         <activity
             android:name=".features.home.presentation.ui.MainActivity"
             android:exported="true">
