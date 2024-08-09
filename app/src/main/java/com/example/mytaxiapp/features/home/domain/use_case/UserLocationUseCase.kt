@@ -7,6 +7,6 @@ import javax.inject.Inject
 class UserLocationUseCase @Inject constructor(
     private val userLocationRepository: UserLocationRepository
 ) {
-    suspend fun getLastLocation() = userLocationRepository.getLastLocation()
+    fun getLastLocation() = userLocationRepository.getLastLocation()
     suspend fun insert(location: UserLocationModel) = userLocationRepository.insert(location)
 }

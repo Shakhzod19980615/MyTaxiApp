@@ -1,10 +1,9 @@
-package com.example.mytaxiapp.features.home.presentation
+package com.example.mytaxiapp.features.home.presentation.intent
 
 import com.example.mytaxiapp.features.home.domain.model.UserLocationModel
 
 sealed class LocationIntent {
     object FetchLastLocation : LocationIntent()
-    data class UpdateLocation(val latitude: Double, val longitude: Double) : LocationIntent()
 }
 data class LocationState(
     val isLoading: Boolean = false,

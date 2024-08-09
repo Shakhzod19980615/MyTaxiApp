@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true"
-    tools:context=".features.MainActivity">
+    tools:context=".features.home.presentation.ui.MainActivity">
 
   <androidx.fragment.app.FragmentContainerView
       android:id="@+id/fragment_container_view_tag"

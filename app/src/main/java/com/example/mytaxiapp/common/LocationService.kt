@@ -1,4 +1,4 @@
-package com.example.mytaxi
+package com.example.mytaxiapp.common
 
 import android.annotation.SuppressLint
 import android.app.Notification
@@ -9,25 +9,41 @@ import android.content.Intent
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import com.example.mytaxiapp.features.home.domain.model.UserLocationModel
+import com.example.mytaxiapp.features.home.domain.use_case.UserLocationUseCase
 import com.google.android.gms.location.*
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class LocationService : Service() {
+@AndroidEntryPoint
+class LocationService() : Service() {
 
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationCallback: LocationCallback
 
+    @Inject
+    lateinit var userLocationUseCase: UserLocationUseCase
+
+    private val scope = MainScope()
+    //private lateinit var userLocationUseCase: UserLocationUseCase
+
     override fun onCreate() {
         super.onCreate()
+
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(locationResult: LocationResult) {
-                locationResult.locations.forEach { location ->
-                    sendLocationToViewModel(location.latitude, location.longitude)
+                locationResult.lastLocation?.let { location ->
+                    saveLocationIntoDb(location.latitude, location.longitude)
                 }
+                startLocationUpdates()
             }
+
         }
-        startLocationUpdates()
+
     }
 
     @SuppressLint("MissingPermission")
@@ -38,9 +54,13 @@ class LocationService : Service() {
             priority = LocationRequest.PRIORITY_HIGH_ACCURACY
         }
         fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, null)
+
     }
 
-    private fun sendLocationToViewModel(latitude: Double, longitude: Double) {
+    private fun saveLocationIntoDb(latitude: Double, longitude: Double) {
+        scope.launch {
+            userLocationUseCase.insert(UserLocationModel(latitude, longitude))
+        }
         val intent = Intent("LocationUpdate")
         intent.putExtra("latitude", latitude)
         intent.putExtra("longitude", longitude)
@@ -49,6 +69,7 @@ class LocationService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val notification = createNotification()
+        startLocationUpdates()
         startForeground(NOTIFICATION_ID, notification)
         return START_STICKY
     }

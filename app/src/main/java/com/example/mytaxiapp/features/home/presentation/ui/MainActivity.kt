@@ -1,9 +1,8 @@
-package com.example.mytaxiapp.features
+package com.example.mytaxiapp.features.home.presentation.ui
 
 import android.Manifest
 import android.annotation.SuppressLint
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -36,10 +35,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import com.example.mytaxiapp.R
-import com.example.mytaxiapp.features.home.FragmentHomeViewModel
+import com.example.mytaxiapp.features.home.presentation.viewModel.UserLocationVM
 import com.google.android.gms.location.*
-import com.mapbox.android.core.permissions.PermissionsListener
 import com.mapbox.android.core.permissions.PermissionsManager
 import com.mapbox.mapboxsdk.Mapbox
 import com.mapbox.mapboxsdk.camera.CameraPosition
@@ -51,15 +50,16 @@ import com.mapbox.mapboxsdk.maps.MapView
 import com.mapbox.mapboxsdk.maps.MapboxMap
 import com.mapbox.mapboxsdk.maps.Style
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 
-class MainActivity : AppCompatActivity(), PermissionsListener {
+class MainActivity : AppCompatActivity() {
     private lateinit var mapView: MapView
     private var mapboxMap: MapboxMap? = null
     private lateinit var permissionsManager: PermissionsManager
     private lateinit var fusedLocationClient: FusedLocationProviderClient
-    private val viewModel: FragmentHomeViewModel by viewModels()
+    private val viewModel: UserLocationVM by viewModels()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Mapbox.getInstance(this, getString(R.string.mapbox_access_token)) // Initialize Mapbox
@@ -70,14 +70,14 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
         mapView = MapView(this)
         mapView.onCreate(savedInstanceState)
 
-        if (PermissionsManager.areLocationPermissionsGranted(this)) {
-            startLocationUpdates()
+        /*if (PermissionsManager.areLocationPermissionsGranted(this)) {
+            //startLocationUpdates()
         } else {
             permissionsManager = PermissionsManager(this)
             permissionsManager.requestLocationPermissions(this)
-        }
+        }*/
         setContent {
-            MapScreen(viewModel)
+            MapScreen()
         }
     }
 
@@ -87,9 +87,10 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
         permissionsManager.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 
+    @SuppressLint("CoroutineCreationDuringComposition")
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    fun MapScreen(viewModel: FragmentHomeViewModel) {
+    fun MapScreen() {
         val context = LocalContext.current
         val bottomSheetScaffoldState = rememberBottomSheetScaffoldState(
             bottomSheetState = rememberStandardBottomSheetState(initialValue = SheetValue.PartiallyExpanded)
@@ -117,7 +118,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
                                     mapboxMapState.value = mapboxMap
                                     mapboxMap.setStyle(Style.MAPBOX_STREETS) { style ->
                                         enableLocationComponent(style)
-                                        startLocationUpdates()
+                                        //startLocationUpdates()
                                         viewModel.setMapboxMap(mapboxMap)
                                     }
                                 }
@@ -125,11 +126,19 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
                         },
                         modifier = Modifier.fillMaxSize()
                     )
-                    locationState.location?.let { location ->
+                    lifecycleScope.launch {
+                        viewModel.state.collect {
+                            it.location?.let { location ->
+                                val latLng = LatLng(location.latitude, location.longitude)
+                                mapboxMapState.value?.animateCamera(CameraUpdateFactory.newLatLng(latLng))
+                            }
+                        }
+                    }
+                    /*locationState.location?.let { location ->
                         val latLng = LatLng(location.latitude, location.longitude)
                         mapboxMapState.value?.animateCamera(CameraUpdateFactory.newLatLng(latLng))
                     }
-
+*/
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -253,20 +262,20 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
     @Preview(showBackground = true)
     @Composable
     fun DefaultPreview() {
-        MapScreen(viewModel)
+        MapScreen()
     }
 
-    override fun onExplanationNeeded(permissionsToExplain: MutableList<String>?) {
+   /* override fun onExplanationNeeded(permissionsToExplain: MutableList<String>?) {
         Toast.makeText(this, "Permission needed", Toast.LENGTH_SHORT).show()
-    }
+    }*/
 
-    override fun onPermissionResult(granted: Boolean) {
+    /*override fun onPermissionResult(granted: Boolean) {
         if (granted) {
-            startLocationUpdates()
+            LocationServices.startLocationUpdates()
         } else {
             Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show()
         }
-    }
+    }*/
 
     @SuppressLint("MissingPermission")
     private fun enableLocationComponent(loadedMapStyle: Style) {
@@ -294,7 +303,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
         }
     }
 
-    @SuppressLint("MissingPermission")
+   /* @SuppressLint("MissingPermission")
     private fun startLocationUpdates() {
         val locationRequest = LocationRequest.create().apply {
             interval = 10000 // Update interval in milliseconds
@@ -302,49 +311,18 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
             priority = LocationRequest.PRIORITY_HIGH_ACCURACY
         }
         fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, null)
-    }
-    private val locationCallback = object : LocationCallback() {
+    }*/
+    /*private val locationCallback = object : LocationCallback() {
         override fun onLocationResult(locationResult: LocationResult) {
             super.onLocationResult(locationResult)
             val location = locationResult.lastLocation
             if (location != null) {
                 val latLng = LatLng(location.latitude, location.longitude)
                 mapboxMap?.animateCamera(CameraUpdateFactory.newLatLng(latLng))
-                viewModel.updateLocation(location.latitude, location.longitude)
             }
         }
-    }
-
-   /* if (ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
-            fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, mainLooper)
-        } else {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
-                LOCATION_PERMISSION_REQUEST_CODE
-            )
-        }
     }*/
 
-  /*  @Composable
-    fun MenuButton(onClick: () -> Unit) {
-        Button(
-            onClick = onClick,
-            shape = RoundedCornerShape(8.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color.White),
-            modifier = Modifier.size(48.dp)
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.ic_menu),
-                contentDescription = "Menu",
-                tint = Color.Black
-            )
-        }
-    }*/
     @Composable
     fun BottomSheetItems(
         icon: Int,
