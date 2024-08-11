@@ -38,9 +38,9 @@ class LocationService() : Service() {
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         permission = AppPermission(this)
-        startLocationUpdates()
-        createLocationRequest()
 
+        createLocationRequest()
+        startLocationUpdates()
 
     }
     private fun createLocationRequest() {

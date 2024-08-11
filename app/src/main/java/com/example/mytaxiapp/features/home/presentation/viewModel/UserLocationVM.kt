@@ -53,15 +53,6 @@ class UserLocationVM @Inject constructor(
         this.mapboxMap = mapboxMap
     }
 
-   /* private fun startLocationService() {
-        val intent = Intent(context, LocationService::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            context.startForegroundService(intent)
-        } else {
-            context.startService(intent)
-        }
-    }
-*/
     private fun stopLocationService() {
         val intent = Intent(context, LocationService::class.java)
         context.stopService(intent)

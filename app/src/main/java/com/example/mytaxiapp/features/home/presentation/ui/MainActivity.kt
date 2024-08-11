@@ -67,6 +67,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private val viewModel: UserLocationVM by viewModels()
     private val LOCATION_PERMISSION_REQUEST_CODE = 1
+    private var latLng: LatLng? = null
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Mapbox.getInstance(this, getString(R.string.mapbox_access_token)) // Initialize Mapbox
@@ -115,7 +116,7 @@ class MainActivity : AppCompatActivity() {
             } else {
                 // Permissions denied, show a message to the user
                 Toast.makeText(this, "Location permissions are required", Toast.LENGTH_SHORT).show()
-                
+
             }
         }
     }
@@ -124,6 +125,7 @@ class MainActivity : AppCompatActivity() {
         val serviceIntent = Intent(this, LocationService::class.java)
         ContextCompat.startForegroundService(this, serviceIntent)
     }
+
     @SuppressLint("CoroutineCreationDuringComposition")
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
@@ -143,12 +145,12 @@ class MainActivity : AppCompatActivity() {
             scope.launch {
                 viewModel.state.collectLatest {
                     val icon = com.mapbox.mapboxsdk.annotations.IconFactory.getInstance(context).fromResource(R.drawable.ic_car)
-                    val latLng = it.location?.let { it1 -> LatLng(it1.latitude, it.location.longitude) }
+                     latLng = it.location?.let { it1 -> LatLng(it1.latitude, it.location.longitude) }
 
                     mapboxMapState.value?.addMarker(
                         MarkerOptions().position(LatLng(latLng))
                             .icon(icon))
-                    mapboxMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng!!, 18.0))
+
                 }
             }
         }
@@ -171,6 +173,8 @@ class MainActivity : AppCompatActivity() {
                                     mapboxMap.setStyle(Style.MAPBOX_STREETS) { style ->
                                        // startLocationUpdates()
                                         viewModel.setMapboxMap(mapboxMap)
+                                        mapboxMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng!!, 18.0))
+
                                     }
                                 }
                             }
@@ -196,11 +200,14 @@ class MainActivity : AppCompatActivity() {
                                 .align(Alignment.CenterEnd)
                                 .padding(end = 16.dp)
                         ) {
-                            ClickableImage(R.drawable.ic_zoom_in, isTransparent = true, "Zoom in") { zoomIn() }
+                            ClickableImage(R.drawable.ic_zoom_in, isTransparent = true, "Zoom in") {
+                                zoomIn(mapboxMapState.value) }
                             Spacer(modifier = Modifier.height(8.dp))
-                            ClickableImage(R.drawable.ic_zoom_out, isTransparent = true, "Zoom out") { zoomOut() }
+                            ClickableImage(R.drawable.ic_zoom_out, isTransparent = true, "Zoom out") {
+                                zoomOut(mapboxMapState.value) }
                             Spacer(modifier = Modifier.height(8.dp))
-                            ClickableImage(R.drawable.ic_reset, isTransparent = true, "Reset") { reset() }
+                            ClickableImage(R.drawable.ic_reset, isTransparent = true, "Reset") {
+                                reset(mapboxMapState.value) }
                         }
                     }
 
@@ -487,16 +494,27 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun zoomIn() {
-        mapboxMap?.animateCamera(CameraUpdateFactory.zoomIn())
+    private fun zoomIn(mapboxMap: MapboxMap?) {
+        mapboxMap?.let {
+            val currentZoom = it.cameraPosition.zoom
+            if (currentZoom < it.maxZoomLevel) {
+                it.animateCamera(CameraUpdateFactory.zoomIn())
+            }
+        }
     }
 
-    private fun zoomOut() {
-        mapboxMap?.animateCamera(CameraUpdateFactory.zoomOut())
+    private fun zoomOut(mapboxMap: MapboxMap?) {
+        mapboxMap?.let {
+            val currentZoom = it.cameraPosition.zoom
+            if (currentZoom > it.minZoomLevel) {
+                it.animateCamera(CameraUpdateFactory.zoomOut())
+            }
+        }
     }
 
-    private fun reset() {
-        mapboxMap?.animateCamera(CameraUpdateFactory.newCameraPosition(CameraPosition.DEFAULT))
+    private fun reset(mapboxMap: MapboxMap?) {
+        latLng?.let { CameraUpdateFactory.newLatLng(it) }
+            ?.let { mapboxMap?.animateCamera(it) }
     }
 
     companion object {
